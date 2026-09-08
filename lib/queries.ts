@@ -8,6 +8,7 @@ import type {
   BadgeCatalogEntry,
   BadgeStats,
   FaceOff,
+  FeatureFlag,
   Linkup,
   Notification,
   PlatformSettings,
@@ -651,4 +652,24 @@ export async function attachPromotions<T extends { id: string }>(
     posts.map((p) => p.id)
   );
   return posts.map((p) => ({ ...p, promotion: promoMap[p.id] ?? null }));
+}
+
+// ============ FEATURE CONTROL ============
+
+export async function fetchFeatureFlags(supabase: SupabaseClient): Promise<Record<string, boolean>> {
+  const { data, error } = await supabase.from("feature_flags").select("key, enabled");
+  if (error || !data) return {};
+  return Object.fromEntries(data.map((f) => [f.key, f.enabled]));
+}
+
+export async function fetchFeatureFlagList(supabase: SupabaseClient): Promise<FeatureFlag[]> {
+  const { data, error } = await supabase.from("feature_flags").select("*").order("category").order("name");
+  if (error) throw error;
+  return (data ?? []) as FeatureFlag[];
+}
+
+export async function isFeatureEnabled(supabase: SupabaseClient, key: string): Promise<boolean> {
+  const { data, error } = await supabase.from("feature_flags").select("enabled").eq("key", key).maybeSingle();
+  if (error || !data) return true; // fail-open if the flags table/row is missing — don't break the app
+  return data.enabled;
 }

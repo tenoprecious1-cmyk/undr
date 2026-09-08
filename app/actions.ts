@@ -750,6 +750,39 @@ export async function adminOpenUndrAction() {
   revalidatePath("/home");
 }
 
+// ============ FEATURE CONTROL ============
+
+export async function adminSetFeatureFlagAction(key: string, enabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!(await can(supabase, user.id, "manage_platform_settings"))) return;
+
+  const { data: before } = await supabase.from("feature_flags").select("*").eq("key", key).maybeSingle();
+
+  await supabase
+    .from("feature_flags")
+    .update({ enabled, updated_by: user.id, updated_at: new Date().toISOString() })
+    .eq("key", key);
+
+  await logAdminActivity(supabase, user.id, enabled ? "enabled_feature" : "disabled_feature", {
+    targetType: "feature_flag",
+    targetId: key,
+    previousState: before,
+    newState: { enabled },
+  });
+
+  revalidatePath("/admin/control/features");
+  revalidatePath("/home");
+  revalidatePath("/explore");
+  revalidatePath("/chaos");
+  revalidatePath("/faceoff");
+  revalidatePath("/rooms");
+  revalidatePath("/compose");
+}
+
 // ============ ADMIN ROLES ============
 
 export async function adminAssignRoleAction(formData: FormData) {

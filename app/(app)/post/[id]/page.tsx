@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { attachViewerState, fetchPost, fetchReplies } from "@/lib/queries";
+import { attachViewerState, fetchPost, fetchReplies, isFeatureEnabled } from "@/lib/queries";
 import PostCard from "@/components/PostCard";
 import Composer from "@/components/Composer";
 import type { Profile } from "@/lib/types";
@@ -20,6 +20,7 @@ export default async function PostDetailPage(props: PageProps<"/post/[id]">) {
   const [withState] = await attachViewerState(supabase, user!.id, [post]);
   const rawReplies = await fetchReplies(supabase, id);
   const replies = await attachViewerState(supabase, user!.id, rawReplies);
+  const chaosEnabled = await isFeatureEnabled(supabase, "chaos");
 
   return (
     <div>
@@ -38,6 +39,7 @@ export default async function PostDetailPage(props: PageProps<"/post/[id]">) {
         redirectTo={`/post/${id}`}
         placeholder="Drop a reply…"
         compact
+        chaosEnabled={chaosEnabled}
       />
 
       {replies.length > 0 && (

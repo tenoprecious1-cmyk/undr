@@ -1,15 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchRoom, fetchRoomMessages } from "@/lib/queries";
+import { fetchRoom, fetchRoomMessages, isFeatureEnabled } from "@/lib/queries";
 import { identityHandle } from "@/lib/types";
 import { timeAgo, timeLeft } from "@/lib/format";
 import RoomMessageForm from "@/components/RoomMessageForm";
 import UserBadges from "@/components/UserBadges";
+import ComingSoon from "@/components/ComingSoon";
 
 export default async function RoomDetailPage(props: PageProps<"/rooms/[id]">) {
   const { id } = await props.params;
   const supabase = await createClient();
+
+  const enabled = await isFeatureEnabled(supabase, "rooms");
+  if (!enabled) {
+    return <ComingSoon emoji="💬" title="Rooms" description="Rooms aren't open right now." />;
+  }
 
   const room = await fetchRoom(supabase, id);
   if (!room) notFound();

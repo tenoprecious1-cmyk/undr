@@ -28,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/faceoffs", label: "Face-Offs", show: true },
     { href: "/admin/rooms", label: "Rooms", show: true },
     { href: "/admin/control", label: "UNDR Control", show: canManagePlatform },
+    { href: "/admin/control/features", label: "Feature Control", show: canManagePlatform },
     { href: "/admin/activity", label: "Activity Log", show: canManagePlatform || canManageAdmins },
   ].filter((item) => item.show);
 

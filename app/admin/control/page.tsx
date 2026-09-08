@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { fetchPlatformSettings } from "@/lib/queries";
 import { can } from "@/lib/permissions";
@@ -37,6 +38,13 @@ export default async function AdminControlPage() {
       <p className="mt-1 text-sm text-text-faint">
         Manual control over launch, platform phase, and identity. UNDR never opens on its own.
       </p>
+
+      <Link
+        href="/admin/control/features"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border-soft px-3.5 py-1.5 text-xs font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
+      >
+        🎛️ Feature Control →
+      </Link>
 
       {/* Status */}
       <div className="mt-6 rounded-2xl border border-border-soft bg-surface/50 p-5">

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { attachViewerState, fetchFeed } from "@/lib/queries";
+import { attachViewerState, fetchFeed, isFeatureEnabled } from "@/lib/queries";
 import PostCard from "@/components/PostCard";
 import Composer from "@/components/Composer";
 import type { Profile } from "@/lib/types";
@@ -11,7 +11,10 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
 
-  const rawPosts = await fetchFeed(supabase, { limit: 50 });
+  const [rawPosts, chaosEnabled] = await Promise.all([
+    fetchFeed(supabase, { limit: 50 }),
+    isFeatureEnabled(supabase, "chaos"),
+  ]);
   const posts = await attachViewerState(supabase, user!.id, rawPosts);
 
   return (
@@ -21,7 +24,7 @@ export default async function HomePage() {
         <p className="mt-0.5 text-sm text-text-faint">What&apos;s the gist? 👀</p>
       </div>
 
-      <Composer profile={profile as Profile} redirectTo="/home" />
+      <Composer profile={profile as Profile} redirectTo="/home" chaosEnabled={chaosEnabled} />
 
       {posts.length === 0 ? (
         <div className="px-6 py-16 text-center text-text-faint">

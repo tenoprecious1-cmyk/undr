@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchLiveFaceOff, fetchPlatformSettings, fetchTrendingHashtags, fetchUnreadNotificationCount } from "@/lib/queries";
+import {
+  fetchFeatureFlags,
+  fetchLiveFaceOff,
+  fetchPlatformSettings,
+  fetchTrendingHashtags,
+  fetchUnreadNotificationCount,
+} from "@/lib/queries";
 import { isAnyAdmin } from "@/lib/permissions";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
@@ -26,13 +32,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/login?banned=1");
   }
 
-  const [hashtags, unreadCount, faceoff, showAdminNav, settings] = await Promise.all([
+  const [hashtags, unreadCount, faceoff, showAdminNav, settings, flags] = await Promise.all([
     fetchTrendingHashtags(supabase, 8),
     fetchUnreadNotificationCount(supabase, user.id),
     fetchLiveFaceOff(supabase, user.id),
     isAnyAdmin(supabase, user.id),
     fetchPlatformSettings(supabase),
+    fetchFeatureFlags(supabase),
   ]);
+
+  const faceoffEnabled = flags.faceoff ?? true;
+  const roomsEnabled = flags.rooms ?? true;
 
   if (settings?.mode === "pre_launch" && !showAdminNav) {
     return (
@@ -60,9 +70,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         {children}
       </main>
-      <TrendingSidebar hashtags={hashtags} faceoff={faceoff} />
+      <TrendingSidebar hashtags={hashtags} faceoff={faceoff} faceoffEnabled={faceoffEnabled} />
       <MobileNav />
-      <OnboardingTour status={profile.onboarding_tour_status} />
+      <OnboardingTour
+        status={profile.onboarding_tour_status}
+        faceoffEnabled={faceoffEnabled}
+        roomsEnabled={roomsEnabled}
+      />
     </div>
   );
 }

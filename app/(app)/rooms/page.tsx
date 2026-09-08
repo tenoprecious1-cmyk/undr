@@ -1,10 +1,23 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { fetchRooms } from "@/lib/queries";
+import { fetchRooms, isFeatureEnabled } from "@/lib/queries";
 import { compactNumber, timeLeft } from "@/lib/format";
+import ComingSoon from "@/components/ComingSoon";
 
 export default async function RoomsPage() {
   const supabase = await createClient();
+
+  const enabled = await isFeatureEnabled(supabase, "rooms");
+  if (!enabled) {
+    return (
+      <ComingSoon
+        emoji="💬"
+        title="Rooms"
+        description="Temporary text rooms for whatever's popping off on campus. They disappear when the topic dies."
+      />
+    );
+  }
+
   const rooms = await fetchRooms(supabase);
 
   return (

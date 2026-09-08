@@ -23,7 +23,20 @@ const STEPS: Step[] = [
 
 type Phase = "closed" | "intro" | "step" | "outro";
 
-export default function OnboardingTour({ status }: { status: OnboardingTourStatus }) {
+export default function OnboardingTour({
+  status,
+  faceoffEnabled = true,
+  roomsEnabled = true,
+}: {
+  status: OnboardingTourStatus;
+  faceoffEnabled?: boolean;
+  roomsEnabled?: boolean;
+}) {
+  const steps = STEPS.filter((s) => {
+    if (s.tour === "faceoff") return faceoffEnabled;
+    if (s.tour === "rooms") return roomsEnabled;
+    return true;
+  });
   const [phase, setPhase] = useState<Phase>("closed");
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -34,7 +47,7 @@ export default function OnboardingTour({ status }: { status: OnboardingTourStatu
 
   useEffect(() => {
     if (phase !== "step") return;
-    const step = STEPS[stepIndex];
+    const step = steps[stepIndex];
     const el = document.querySelector(`[data-tour="${step.tour}"]`);
     const update = () => setRect(el ? el.getBoundingClientRect() : null);
     update();
@@ -57,7 +70,7 @@ export default function OnboardingTour({ status }: { status: OnboardingTourStatu
   };
 
   const next = () => {
-    if (stepIndex + 1 < STEPS.length) {
+    if (stepIndex + 1 < steps.length) {
       setStepIndex((i) => i + 1);
     } else {
       setPhase("outro");
@@ -95,7 +108,7 @@ export default function OnboardingTour({ status }: { status: OnboardingTourStatu
       )}
 
       {phase === "step" && (
-        <TourSpotlight step={STEPS[stepIndex]} rect={rect} index={stepIndex} total={STEPS.length} onNext={next} onSkip={skip} />
+        <TourSpotlight step={steps[stepIndex]} rect={rect} index={stepIndex} total={steps.length} onNext={next} onSkip={skip} />
       )}
 
       {phase === "outro" && (

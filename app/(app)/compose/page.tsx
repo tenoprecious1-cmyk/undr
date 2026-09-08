@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { isFeatureEnabled } from "@/lib/queries";
 import Composer from "@/components/Composer";
 import type { Profile } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export default async function ComposePage() {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+  const chaosEnabled = await isFeatureEnabled(supabase, "chaos");
 
   return (
     <div>
@@ -18,7 +20,7 @@ export default async function ComposePage() {
         </Link>
         <h1 className="text-[15px] font-bold text-text">Drop something</h1>
       </div>
-      <Composer profile={profile as Profile} redirectTo="/home" />
+      <Composer profile={profile as Profile} redirectTo="/home" chaosEnabled={chaosEnabled} />
     </div>
   );
 }

@@ -9,10 +9,11 @@ const TABS = [
   { key: "people", label: "🔎 People" },
 ];
 
-export default function ExploreTabs({ active }: { active: string }) {
+export default function ExploreTabs({ active, chaosEnabled = true }: { active: string; chaosEnabled?: boolean }) {
+  const tabs = chaosEnabled ? TABS : TABS.filter((t) => t.key !== "chaos");
   return (
     <div className="scrollbar-none flex gap-1 overflow-x-auto border-b border-border-soft px-3 py-2">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <Link
           key={t.key}
           href={`/explore?tab=${t.key}`}

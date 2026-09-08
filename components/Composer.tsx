@@ -33,6 +33,7 @@ export default function Composer({
   placeholder = "What's the gist? 👀",
   compact = false,
   defaultCategory = "gist",
+  chaosEnabled = true,
 }: {
   profile: Profile;
   parentId?: string;
@@ -40,8 +41,9 @@ export default function Composer({
   placeholder?: string;
   compact?: boolean;
   defaultCategory?: "gist" | "chaos";
+  chaosEnabled?: boolean;
 }) {
-  const [category, setCategory] = useState<"gist" | "chaos">(defaultCategory);
+  const [category, setCategory] = useState<"gist" | "chaos">(chaosEnabled ? defaultCategory : "gist");
   const [pollOpen, setPollOpen] = useState(false);
   const [options, setOptions] = useState(["", ""]);
   const [images, setImages] = useState<PickedImage[]>([]);
@@ -155,7 +157,7 @@ export default function Composer({
         createPostAction(fd);
         setOptions(["", ""]);
         setPollOpen(false);
-        setCategory(defaultCategory);
+        setCategory(chaosEnabled ? defaultCategory : "gist");
         resetMedia();
       }}
       className={`flex gap-3 border-b border-border-soft px-4 py-4 sm:px-5 ${compact ? "" : ""}`}
@@ -300,26 +302,28 @@ export default function Composer({
             >
               📊
             </button>
-            <div className="ml-2 flex rounded-full border border-border p-0.5 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setCategory("gist")}
-                className={`rounded-full px-3 py-1 transition ${
-                  category === "gist" ? "bg-accent text-white" : "text-text-dim"
-                }`}
-              >
-                Gist
-              </button>
-              <button
-                type="button"
-                onClick={() => setCategory("chaos")}
-                className={`rounded-full px-3 py-1 transition ${
-                  category === "chaos" ? "bg-chaos text-white" : "text-text-dim"
-                }`}
-              >
-                Chaos 😂
-              </button>
-            </div>
+            {chaosEnabled && (
+              <div className="ml-2 flex rounded-full border border-border p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setCategory("gist")}
+                  className={`rounded-full px-3 py-1 transition ${
+                    category === "gist" ? "bg-accent text-white" : "text-text-dim"
+                  }`}
+                >
+                  Gist
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategory("chaos")}
+                  className={`rounded-full px-3 py-1 transition ${
+                    category === "chaos" ? "bg-chaos text-white" : "text-text-dim"
+                  }`}
+                >
+                  Chaos 😂
+                </button>
+              </div>
+            )}
           </div>
           <DropButton />
         </div>

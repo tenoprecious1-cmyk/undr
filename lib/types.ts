@@ -171,6 +171,26 @@ export type BadgeStats = {
   achievementCount: number;
 };
 
+// ============ FEATURE CONTROL ============
+
+export type FeatureCategory = "core_social" | "culture";
+
+export type FeatureFlag = {
+  key: string;
+  name: string;
+  category: FeatureCategory;
+  enabled: boolean;
+  updated_by: string | null;
+  updated_at: string;
+};
+
+// The "culture" flags that are actually enforced in the student-facing UI
+// (hidden from routes/nav/composer when off). Core-social flags are shown
+// in the admin panel for visibility but aren't wired to gate anything yet —
+// see components/CleanShot and app/(app)/{faceoff,rooms,chaos} for the
+// enforced ones.
+export type CultureFeatureKey = "faceoff" | "rooms" | "chaos" | "undr_pulse" | "random_drop" | "drop_of_day";
+
 export type AdminStats = {
   totalUsers: number;
   postsToday: number;

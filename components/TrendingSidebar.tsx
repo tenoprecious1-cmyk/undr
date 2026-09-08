@@ -5,9 +5,11 @@ import type { FaceOff, Hashtag } from "@/lib/types";
 export default function TrendingSidebar({
   hashtags,
   faceoff,
+  faceoffEnabled = true,
 }: {
   hashtags: Hashtag[];
   faceoff?: FaceOff | null;
+  faceoffEnabled?: boolean;
 }) {
   return (
     <aside className="hidden xl:flex sticky top-0 h-dvh w-80 shrink-0 flex-col gap-4 overflow-y-auto px-4 py-6">
@@ -44,6 +46,7 @@ export default function TrendingSidebar({
         </ol>
       </div>
 
+      {faceoffEnabled && (
       <div className="rounded-2xl border border-border-soft bg-gradient-to-br from-accent-soft to-transparent p-4">
         <h2 className="mb-1.5 flex items-center gap-2 text-[15px] font-bold text-text">
           <span>⚔️</span> FACE-OFF
@@ -75,6 +78,7 @@ export default function TrendingSidebar({
           </>
         )}
       </div>
+      )}
 
       <p className="px-2 pb-6 text-xs text-text-faint">
         UNDR · The other side of Bowen.

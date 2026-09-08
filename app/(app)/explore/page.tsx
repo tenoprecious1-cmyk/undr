@@ -7,6 +7,7 @@ import {
   fetchProfileStats,
   fetchTrendingFeed,
   fetchTrendingHashtags,
+  isFeatureEnabled,
   searchProfiles,
 } from "@/lib/queries";
 import PostCard from "@/components/PostCard";
@@ -17,12 +18,15 @@ import { compactNumber } from "@/lib/format";
 
 export default async function ExplorePage(props: PageProps<"/explore">) {
   const searchParams = await props.searchParams;
-  const tab = typeof searchParams.tab === "string" ? searchParams.tab : "trending";
+  let tab = typeof searchParams.tab === "string" ? searchParams.tab : "trending";
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const chaosEnabled = await isFeatureEnabled(supabase, "chaos");
+  if (tab === "chaos" && !chaosEnabled) tab = "trending";
 
   let content: React.ReactNode;
 
@@ -125,7 +129,7 @@ export default async function ExplorePage(props: PageProps<"/explore">) {
         <h1 className="text-xl font-bold text-text">Explore</h1>
         <p className="mt-0.5 text-sm text-text-faint">What&apos;s happening on campus right now 👀</p>
       </div>
-      <ExploreTabs active={tab} />
+      <ExploreTabs active={tab} chaosEnabled={chaosEnabled} />
       {content}
     </div>
   );

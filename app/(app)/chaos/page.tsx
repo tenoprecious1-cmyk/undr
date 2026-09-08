@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { attachViewerState, fetchFeed } from "@/lib/queries";
+import { attachViewerState, fetchFeed, isFeatureEnabled } from "@/lib/queries";
 import PostCard from "@/components/PostCard";
 import Composer from "@/components/Composer";
+import ComingSoon from "@/components/ComingSoon";
 import type { Profile } from "@/lib/types";
 
 export default async function ChaosPage() {
@@ -9,6 +10,18 @@ export default async function ChaosPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const enabled = await isFeatureEnabled(supabase, "chaos");
+  if (!enabled) {
+    return (
+      <ComingSoon
+        emoji="😂"
+        title="Chaos"
+        description="Memes, campus jokes, and the stuff that isn't supposed to be serious. Coming to UNDR."
+      />
+    );
+  }
+
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
 
   let posts = await fetchFeed(supabase, { category: "chaos", limit: 50 });

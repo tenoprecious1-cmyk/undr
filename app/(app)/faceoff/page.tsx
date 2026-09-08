@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { fetchLiveFaceOff } from "@/lib/queries";
+import { fetchLiveFaceOff, isFeatureEnabled } from "@/lib/queries";
 import FaceOffCard from "@/components/FaceOffCard";
 import ComingSoon from "@/components/ComingSoon";
 
@@ -8,6 +8,17 @@ export default async function FaceOffPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const enabled = await isFeatureEnabled(supabase, "faceoff");
+  if (!enabled) {
+    return (
+      <ComingSoon
+        emoji="⚔️"
+        title="Friday Face-Off"
+        description="Every Friday, UNDR hosts the campus's biggest debate. Pick YES or NO, become a featured speaker, and watch the results roll in live."
+      />
+    );
+  }
 
   const faceoff = await fetchLiveFaceOff(supabase, user?.id ?? null);
 
