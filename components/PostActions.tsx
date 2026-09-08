@@ -4,8 +4,11 @@ import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { compactNumber } from "@/lib/format";
 import { toggleReactionAction, toggleBookmarkAction, toggleRepostAction } from "@/app/actions";
+import type { Post } from "@/lib/types";
+import CleanShotModal from "./CleanShot/CleanShotModal";
 
 export default function PostActions({
+  post,
   postId,
   path,
   replyCount,
@@ -16,6 +19,7 @@ export default function PostActions({
   viewerBookmarked,
   viewerReposted,
 }: {
+  post: Post;
   postId: string;
   path: string;
   replyCount: number;
@@ -28,6 +32,7 @@ export default function PostActions({
 }) {
   const [, startTransition] = useTransition();
   const [burst, setBurst] = useState(false);
+  const [cleanShotOpen, setCleanShotOpen] = useState(false);
 
   const [reaction, setReaction] = useOptimistic(
     { active: viewerReacted, count: reactionCount },
@@ -137,6 +142,20 @@ export default function PostActions({
       >
         <ShareIcon className="h-[18px] w-[18px]" />
       </button>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setCleanShotOpen(true);
+        }}
+        title="Clean Shot"
+        className="group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-accent-2"
+      >
+        <CleanShotIcon className="h-[18px] w-[18px]" />
+      </button>
+
+      {cleanShotOpen && <CleanShotModal post={post} onClose={() => setCleanShotOpen(false)} />}
     </div>
   );
 }
@@ -166,6 +185,17 @@ function BookmarkIcon({ filled, ...props }: React.SVGProps<SVGSVGElement> & { fi
   return (
     <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" {...props}>
       <path d="M6 4h12v17l-6-4-6 4V4Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CleanShotIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <path
+        d="M4 8a2 2 0 0 1 2-2h1.2l.9-1.5A1 1 0 0 1 8.96 4h6.08a1 1 0 0 1 .86.5L16.8 6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.2" />
     </svg>
   );
 }

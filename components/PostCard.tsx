@@ -114,6 +114,7 @@ export default function PostCard({ post, path = "/home" }: { post: Post; path?: 
           )}
 
           <PostActions
+            post={post}
             postId={post.id}
             path={path}
             replyCount={post.reply_count}

@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { can, isAnyAdmin } from "@/lib/permissions";
-import { fetchPlatformSettings } from "@/lib/queries";
-import type { PlatformMode, PlatformPhase, IdentityMode, PromoType, RoleKey } from "@/lib/types";
+import { fetchPlatformSettings, fetchReplies } from "@/lib/queries";
+import type { PlatformMode, PlatformPhase, IdentityMode, PromoType, RoleKey, Profile } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ActionState = { error?: string } | null;
@@ -312,6 +312,33 @@ export async function markNotificationsReadAction() {
 
   await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
   revalidatePath("/notifications");
+}
+
+// ============ CLEAN SHOT ============
+
+export type CleanShotReplyOption = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: Profile;
+};
+
+// Lightweight reply list for the Clean Shot reply picker — reuses the same
+// fetchReplies pipeline as the thread view, trimmed to what the card needs.
+export async function fetchRepliesForCleanShotAction(postId: string): Promise<CleanShotReplyOption[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const replies = await fetchReplies(supabase, postId);
+  return replies.map((r) => ({
+    id: r.id,
+    content: r.content,
+    created_at: r.created_at,
+    author: r.author,
+  }));
 }
 
 // ============ ADMIN ============
