@@ -7,15 +7,16 @@ import { identityHandle } from "@/lib/types";
 import { logoutAction } from "@/app/actions";
 import UserBadges from "./UserBadges";
 
+// X-style core nav for V1. Face-Off / Rooms / Link Up ("culture" features) stay
+// built but are left out of primary nav until the admin feature-flag system
+// (Phase 3) can gate them explicitly — their routes and backend still work.
 const NAV = [
   { href: "/home", label: "Home", icon: HomeIcon, tour: "home" },
   { href: "/trending", label: "Trending", icon: FireIcon, tour: "trending" },
   { href: "/explore", label: "Explore", icon: CompassIcon, tour: "explore" },
-  { href: "/faceoff", label: "Face-Off", icon: SwordIcon, tour: "faceoff" },
-  { href: "/rooms", label: "Rooms", icon: RoomIcon, tour: "rooms" },
-  { href: "/linkup", label: "Link Up", icon: LinkIcon, tour: undefined },
   { href: "/notifications", label: "Notifications", icon: BellIcon, tour: undefined },
   { href: "/bookmarks", label: "Bookmarks", icon: BookmarkIcon, tour: "bookmarks" },
+  { href: "/profile", label: "Profile", icon: ProfileIcon, tour: "profile" },
 ];
 
 export default function Sidebar({
@@ -206,6 +207,14 @@ function BookmarkIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
       <path d="M6 4h12v17l-6-4-6 4V4Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ProfileIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6" strokeLinecap="round" />
     </svg>
   );
 }

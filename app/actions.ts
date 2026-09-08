@@ -67,6 +67,18 @@ export async function logoutAction() {
   redirect("/login");
 }
 
+const MAX_IMAGES = 4;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+
+function extFromMime(mime: string): string {
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "video/quicktime") return "mov";
+  return mime.split("/")[1] ?? "bin";
+}
+
 export async function createPostAction(formData: FormData) {
   const content = String(formData.get("content") ?? "").trim();
   const category = (String(formData.get("category") ?? "gist") === "chaos" ? "chaos" : "gist") as
@@ -76,7 +88,23 @@ export async function createPostAction(formData: FormData) {
   const pollOptionsRaw = formData.get("poll_options");
   const redirectTo = formData.get("redirect_to") ? String(formData.get("redirect_to")) : null;
 
-  if (!content) return;
+  const images = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0 && IMAGE_TYPES.has(f.type))
+    .slice(0, MAX_IMAGES)
+    .filter((f) => f.size <= MAX_IMAGE_BYTES);
+
+  const videoFile = formData.get("video");
+  const video =
+    videoFile instanceof File &&
+    videoFile.size > 0 &&
+    VIDEO_TYPES.has(videoFile.type) &&
+    videoFile.size <= MAX_VIDEO_BYTES
+      ? videoFile
+      : null;
+
+  const hasMedia = images.length > 0 || !!video;
+  if (!content && !hasMedia) return;
 
   const supabase = await createClient();
   const {
@@ -85,12 +113,15 @@ export async function createPostAction(formData: FormData) {
   if (!user) redirect("/login");
   await assertLaunched(supabase, user.id);
 
-  const pollOptions = pollOptionsRaw
-    ? String(pollOptionsRaw)
-        .split("|")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
+  // A post is either a poll or has media, not both — keeps composer state simple.
+  const pollOptions = hasMedia
+    ? []
+    : pollOptionsRaw
+      ? String(pollOptionsRaw)
+          .split("|")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
 
   const { data: post, error } = await supabase
     .from("posts")
@@ -110,6 +141,28 @@ export async function createPostAction(formData: FormData) {
     await supabase.from("poll_options").insert(
       pollOptions.map((label, i) => ({ post_id: post.id, label, position: i }))
     );
+  }
+
+  if (hasMedia) {
+    const mediaFiles: { file: File; media_type: "image" | "video" }[] = video
+      ? [{ file: video, media_type: "video" }]
+      : images.map((file) => ({ file, media_type: "image" as const }));
+
+    const uploaded: { storage_path: string; media_type: "image" | "video"; position: number }[] = [];
+    for (let i = 0; i < mediaFiles.length; i++) {
+      const { file, media_type } = mediaFiles[i];
+      const path = `${user.id}/${post.id}/${i}-${Date.now()}.${extFromMime(file.type)}`;
+      const { error: uploadError } = await supabase.storage
+        .from("post-media")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (!uploadError) uploaded.push({ storage_path: path, media_type, position: i });
+    }
+
+    if (uploaded.length > 0) {
+      await supabase.from("post_media").insert(
+        uploaded.map((m) => ({ post_id: post.id, ...m }))
+      );
+    }
   }
 
   revalidatePath("/home");

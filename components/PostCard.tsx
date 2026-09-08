@@ -67,10 +67,42 @@ export default function PostCard({ post, path = "/home" }: { post: Post; path?: 
               )}
               <span className="text-text-faint">· {timeAgo(post.created_at)}</span>
             </div>
-            <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-text">
-              {renderContent(post.content)}
-            </p>
+            {post.content && (
+              <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-text">
+                {renderContent(post.content)}
+              </p>
+            )}
           </div>
+
+          {post.media.length > 0 && post.media[0].media_type === "video" ? (
+            <div
+              className="mt-2 overflow-hidden rounded-2xl border border-border-soft"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={post.media[0].url} controls className="max-h-[28rem] w-full bg-black" />
+            </div>
+          ) : post.media.length > 0 ? (
+            <div
+              className={`mt-2 grid gap-1 overflow-hidden rounded-2xl border border-border-soft ${
+                post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {post.media.map((m) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={m.id}
+                  src={m.url}
+                  alt=""
+                  className={`w-full cursor-pointer object-cover ${
+                    post.media.length === 1 ? "max-h-[28rem]" : "aspect-square"
+                  }`}
+                  onClick={() => router.push(`/post/${post.id}`)}
+                />
+              ))}
+            </div>
+          ) : null}
 
           {post.is_poll && post.poll_options && post.poll_options.length > 0 && (
             <PollBlock

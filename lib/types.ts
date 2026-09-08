@@ -206,6 +206,19 @@ export type PollOption = {
   vote_count: number;
 };
 
+export type MediaType = "image" | "video";
+
+export type PostMedia = {
+  id: string;
+  post_id: string;
+  media_type: MediaType;
+  storage_path: string;
+  position: number;
+  width: number | null;
+  height: number | null;
+  url: string;
+};
+
 export type Post = {
   id: string;
   author_id: string;
@@ -221,6 +234,7 @@ export type Post = {
   author: Profile;
   hashtags: string[];
   poll_options?: PollOption[];
+  media: PostMedia[];
   viewer_reacted: boolean;
   viewer_bookmarked: boolean;
   viewer_reposted: boolean;

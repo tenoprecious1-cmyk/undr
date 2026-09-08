@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/home", label: "Home", emoji: "🏠", tour: "home" },
-  { href: "/trending", label: "Trending", emoji: "🔥", tour: "trending" },
-  { href: "/faceoff", label: "Face-Off", emoji: "⚔️", tour: "faceoff" },
+  { href: "/explore", label: "Explore", emoji: "🧭", tour: "explore" },
   { href: "/compose", label: "Drop", emoji: "➕", accent: true, tour: "drop" },
+  { href: "/notifications", label: "Alerts", emoji: "🔔", tour: undefined },
   { href: "/profile", label: "Profile", emoji: "👤", tour: "profile" },
 ];
 

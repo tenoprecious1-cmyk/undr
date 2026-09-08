@@ -27,7 +27,7 @@ export default async function PostDetailPage(props: PageProps<"/post/[id]">) {
         <Link href="/home" className="grid h-8 w-8 place-items-center rounded-full hover:bg-surface-2">
           ←
         </Link>
-        <h1 className="text-[15px] font-bold text-text">Gist</h1>
+        <h1 className="text-[15px] font-bold text-text">Thread</h1>
       </div>
 
       <PostCard post={withState} path={`/post/${id}`} />
@@ -39,6 +39,12 @@ export default async function PostDetailPage(props: PageProps<"/post/[id]">) {
         placeholder="Drop a reply…"
         compact
       />
+
+      {replies.length > 0 && (
+        <div className="border-b border-border-soft px-4 py-2.5 text-sm font-bold text-text-dim sm:px-5">
+          💬 {replies.length} {replies.length === 1 ? "Reply" : "Replies"}
+        </div>
+      )}
 
       {replies.map((reply) => (
         <PostCard key={reply.id} post={reply} path={`/post/${id}`} />

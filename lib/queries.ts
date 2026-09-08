@@ -27,8 +27,25 @@ const POST_SELECT = `
   reply_count, repost_count, reaction_count, bookmark_count, created_at,
   author:profiles!posts_author_id_fkey(*),
   post_hashtags(hashtags(tag)),
-  poll_options(*)
+  poll_options(*),
+  post_media(*)
 `;
+
+function publicMediaUrl(storagePath: string): string {
+  const base =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://rrsnvssbimcfotyuaare.supabase.co";
+  return `${base}/storage/v1/object/public/post-media/${storagePath}`;
+}
+
+type RawPostMedia = {
+  id: string;
+  post_id: string;
+  media_type: "image" | "video";
+  storage_path: string;
+  position: number;
+  width: number | null;
+  height: number | null;
+};
 
 type RawPost = {
   id: string;
@@ -45,6 +62,7 @@ type RawPost = {
   author: Profile;
   post_hashtags: { hashtags: { tag: string } | null }[] | null;
   poll_options: Post["poll_options"];
+  post_media: RawPostMedia[] | null;
 };
 
 function mapRawPost(row: RawPost): Post {
@@ -65,6 +83,19 @@ function mapRawPost(row: RawPost): Post {
       .map((ph) => ph.hashtags?.tag)
       .filter((t): t is string => !!t),
     poll_options: (row.poll_options ?? []).slice().sort((a, b) => a.position - b.position),
+    media: (row.post_media ?? [])
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((m) => ({
+        id: m.id,
+        post_id: m.post_id,
+        media_type: m.media_type,
+        storage_path: m.storage_path,
+        position: m.position,
+        width: m.width,
+        height: m.height,
+        url: publicMediaUrl(m.storage_path),
+      })),
     viewer_reacted: false,
     viewer_bookmarked: false,
     viewer_reposted: false,
