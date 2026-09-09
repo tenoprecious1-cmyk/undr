@@ -9,7 +9,7 @@ export default async function SignupPage() {
   const preLaunch = settings?.mode === "pre_launch";
   const showMessage = preLaunch && (settings?.prelaunch_message_enabled ?? true);
   const showCounter = preLaunch && (settings?.prelaunch_counter_enabled ?? true);
-  const counter = settings?.launch_counter ?? 903;
+  const counter = settings?.launch_counter ?? 902;
 
   return (
     <div className="flex min-h-dvh items-center justify-center px-6 py-12">

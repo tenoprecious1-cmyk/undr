@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchPlatformSettings } from "@/lib/queries";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { adminSaveControlSettingsAction, adminOpenUndrAction } from "@/app/actions";
+import { adminSaveControlSettingsAction, adminOpenUndrAction, adminLockUndrAction } from "@/app/actions";
 
 const PHASES: { key: string; label: string; blurb: string }[] = [
   { key: "underground", label: "Underground", blurb: "Anonymous identity only. No followers, no following, no profile pictures." },
@@ -60,7 +60,7 @@ export default async function AdminControlPage() {
             </>
           )}
         </p>
-        {!isOpen && (
+        {!isOpen ? (
           <form action={adminOpenUndrAction} className="mt-4">
             <button
               type="submit"
@@ -69,7 +69,21 @@ export default async function AdminControlPage() {
               🚀 OPEN UNDR
             </button>
             <p className="mt-2 text-xs text-text-faint">
-              This is permanent and manual. Pre-launch messaging and the counter disappear immediately.
+              Manual and reversible — you can lock UNDR back down at any time from here. Pre-launch
+              messaging and the counter disappear the moment you open.
+            </p>
+          </form>
+        ) : (
+          <form action={adminLockUndrAction} className="mt-4">
+            <button
+              type="submit"
+              className="rounded-full border border-border-soft bg-surface px-5 py-3 text-sm font-bold text-text transition hover:border-danger/50 hover:text-danger"
+            >
+              🔒 LOCK UNDR
+            </button>
+            <p className="mt-2 text-xs text-text-faint">
+              Puts UNDR back into pre-launch. Every non-admin is locked out again — mutating actions
+              (posting, reacting, voting, etc.) are blocked server-side too — until you open it again.
             </p>
           </form>
         )}

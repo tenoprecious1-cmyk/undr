@@ -47,7 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (settings?.mode === "pre_launch" && !showAdminNav) {
     return (
       <PreLaunchLock
-        counter={settings.launch_counter ?? 903}
+        counter={settings.launch_counter ?? 902}
         showCounter={settings.prelaunch_counter_enabled ?? true}
       />
     );

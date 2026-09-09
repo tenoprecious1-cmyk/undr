@@ -689,7 +689,7 @@ export async function adminSaveControlSettingsAction(formData: FormData) {
 
   const { data: before } = await supabase.from("platform_settings").select("*").eq("id", true).single();
 
-  const launchCounter = Math.max(0, Number(formData.get("launch_counter") ?? before?.launch_counter ?? 903));
+  const launchCounter = Math.max(0, Number(formData.get("launch_counter") ?? before?.launch_counter ?? 902));
   const prelaunchMessageEnabled = formData.get("prelaunch_message_enabled") === "on";
   const prelaunchCounterEnabled = formData.get("prelaunch_counter_enabled") === "on";
   const platformPhase = String(formData.get("platform_phase") ?? before?.platform_phase ?? "underground") as PlatformPhase;
@@ -743,6 +743,32 @@ export async function adminOpenUndrAction() {
     targetType: "platform_settings",
     previousState: before,
     newState: { mode: "open" },
+  });
+
+  revalidatePath("/admin/control");
+  revalidatePath("/signup");
+  revalidatePath("/home");
+}
+
+export async function adminLockUndrAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  if (!(await can(supabase, user.id, "manage_platform_settings"))) return;
+
+  const { data: before } = await supabase.from("platform_settings").select("mode").eq("id", true).single();
+
+  await supabase
+    .from("platform_settings")
+    .update({ mode: "pre_launch" as PlatformMode, updated_at: new Date().toISOString(), updated_by: user.id })
+    .eq("id", true);
+
+  await logAdminActivity(supabase, user.id, "locked_undr", {
+    targetType: "platform_settings",
+    previousState: before,
+    newState: { mode: "pre_launch" },
   });
 
   revalidatePath("/admin/control");
