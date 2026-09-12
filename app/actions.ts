@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { can, isAnyAdmin } from "@/lib/permissions";
 import { fetchPlatformSettings, fetchReplies, isFeatureEnabled } from "@/lib/queries";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createOrUpdateSubaccount, resolveAccountName, verifyTransaction } from "@/lib/flutterwave";
 import type { PlatformMode, PlatformPhase, IdentityMode, PromoType, RoleKey, Profile } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -1086,12 +1087,97 @@ export async function deleteMarketplaceListingAction(listingId: string) {
   redirect("/marketplace");
 }
 
+export type ResolveBankAccountResult = { accountName: string } | { error: string };
+
+// Lets the payout-account form show "is this you?" before saving anything.
+export async function resolveBankAccountAction(bankCode: string, accountNumber: string): Promise<ResolveBankAccountResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!bankCode || !/^\d{10}$/.test(accountNumber)) {
+    return { error: "Enter a valid 10-digit account number." };
+  }
+
+  const resolved = await resolveAccountName(bankCode, accountNumber);
+  if (!resolved.ok) return { error: resolved.error };
+  return { accountName: resolved.data.accountName };
+}
+
+export type PayoutAccountResult = { ok: true } | { error: string };
+
+// A seller's payout destination. Creates (or updates) a Flutterwave
+// subaccount for them — split_value: 1 means that subaccount gets 100% of
+// any sale it's attached to, so money settles straight into the seller's
+// own bank account rather than pooling in one UNDR-controlled account.
+export async function savePayoutAccountAction(formData: FormData): Promise<PayoutAccountResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const bankCode = String(formData.get("bank_code") ?? "").trim();
+  const bankName = String(formData.get("bank_name") ?? "").trim();
+  const accountNumber = String(formData.get("account_number") ?? "").trim();
+
+  if (!bankCode || !bankName || !/^\d{10}$/.test(accountNumber)) {
+    return { error: "Pick a bank and enter a valid 10-digit account number." };
+  }
+
+  const resolved = await resolveAccountName(bankCode, accountNumber);
+  if (!resolved.ok) return { error: resolved.error };
+
+  const { data: existing } = await supabase
+    .from("marketplace_payout_accounts")
+    .select("id, flutterwave_subaccount_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const subaccount = await createOrUpdateSubaccount({
+    existingSubaccountId: existing?.flutterwave_subaccount_id ?? null,
+    bankCode,
+    accountNumber,
+    // Flutterwave requires a business_name; anonymity is preserved since
+    // this never appears anywhere buyer-facing — only used internally by
+    // Flutterwave to label the subaccount.
+    businessName: `UNDR Seller ${user.id.slice(0, 8)}`,
+  });
+  if (!subaccount.ok) return { error: subaccount.error };
+
+  const row = {
+    user_id: user.id,
+    bank_code: bankCode,
+    bank_name: bankName,
+    account_number: accountNumber,
+    account_name: resolved.data.accountName,
+    flutterwave_subaccount_id: subaccount.data.subaccountId,
+  };
+
+  const { error } = existing
+    ? await supabase.from("marketplace_payout_accounts").update(row).eq("id", existing.id)
+    : await supabase.from("marketplace_payout_accounts").insert(row);
+
+  if (error) return { error: "Saved with Flutterwave but couldn't save to your account. Try again." };
+
+  revalidatePath("/marketplace/payout-account");
+  return { ok: true };
+}
+
 export type MarketplaceCheckoutInit =
-  | { orderId: string; reference: string; amountKobo: number; buyerEmail: string }
+  | {
+      orderId: string;
+      txRef: string;
+      amountNaira: number;
+      buyerEmail: string;
+      sellerSubaccountId: string;
+    }
   | { error: string };
 
-// Starts checkout: creates a pending order with a fresh reference. This is
-// the only marketplace-orders write a buyer's own browser session is ever
+// Starts checkout: creates a pending order with a fresh tx_ref. This is the
+// only marketplace-orders write a buyer's own browser session is ever
 // allowed to make directly — everything past "pending" goes through
 // verifyMarketplacePaymentAction below.
 export async function createMarketplaceOrderAction(listingId: string): Promise<MarketplaceCheckoutInit> {
@@ -1112,7 +1198,17 @@ export async function createMarketplaceOrderAction(listingId: string): Promise<M
   if (!listing || listing.status !== "active") return { error: "This listing isn't available anymore." };
   if (listing.seller_id === user.id) return { error: "You can't buy your own listing." };
 
-  const reference = `undr_${listing.id.slice(0, 8)}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const { data: payoutAccount } = await supabase
+    .from("marketplace_payout_accounts")
+    .select("flutterwave_subaccount_id")
+    .eq("user_id", listing.seller_id)
+    .maybeSingle();
+
+  if (!payoutAccount?.flutterwave_subaccount_id) {
+    return { error: "The seller hasn't set up payouts yet — check back later." };
+  }
+
+  const txRef = `undr_${listing.id.slice(0, 8)}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const { data: order, error } = await supabase
     .from("marketplace_orders")
@@ -1121,7 +1217,7 @@ export async function createMarketplaceOrderAction(listingId: string): Promise<M
       buyer_id: user.id,
       seller_id: listing.seller_id,
       amount_kobo: listing.price_kobo,
-      payment_reference: reference,
+      payment_reference: txRef,
     })
     .select("id")
     .single();
@@ -1130,20 +1226,25 @@ export async function createMarketplaceOrderAction(listingId: string): Promise<M
 
   return {
     orderId: order.id,
-    reference,
-    amountKobo: listing.price_kobo,
+    txRef,
+    amountNaira: listing.price_kobo / 100,
     buyerEmail: user.email ?? "buyer@undr.app",
+    sellerSubaccountId: payoutAccount.flutterwave_subaccount_id,
   };
 }
 
 export type MarketplaceVerifyResult = { ok: true } | { error: string };
 
 // The only path that can ever mark a marketplace order "paid". Re-verifies
-// the transaction against Paystack's own API (status + amount + reference
+// the transaction against Flutterwave's own API (status + amount + tx_ref
 // all have to match) before writing anything, and the write itself uses
 // the service-role client specifically because RLS has no client-reachable
 // path to "paid" — see lib/supabase/service.ts.
-export async function verifyMarketplacePaymentAction(orderId: string, path: string): Promise<MarketplaceVerifyResult> {
+export async function verifyMarketplacePaymentAction(
+  orderId: string,
+  transactionId: string,
+  path: string
+): Promise<MarketplaceVerifyResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -1160,26 +1261,16 @@ export async function verifyMarketplacePaymentAction(orderId: string, path: stri
   if (order.status === "paid") return { ok: true };
   if (order.status !== "pending") return { error: "This order can't be verified anymore." };
 
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
-  if (!secretKey) {
-    return { error: "Checkout isn't fully set up yet — ask an admin to add the Paystack keys." };
-  }
+  const verified = await verifyTransaction(transactionId);
+  if (!verified.ok) return { error: verified.error };
 
-  let verified: { status: string; amount: number } | null = null;
-  try {
-    const res = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(order.payment_reference)}`,
-      { headers: { Authorization: `Bearer ${secretKey}` }, cache: "no-store" }
-    );
-    const json = await res.json();
-    if (json?.status && json?.data) {
-      verified = { status: String(json.data.status), amount: Number(json.data.amount) };
-    }
-  } catch {
-    return { error: "Couldn't reach Paystack to verify the payment. Try again." };
-  }
-
-  if (!verified || verified.status !== "success" || verified.amount !== order.amount_kobo) {
+  const expectedNaira = order.amount_kobo / 100;
+  if (
+    verified.data.status !== "successful" ||
+    verified.data.txRef !== order.payment_reference ||
+    verified.data.currency !== "NGN" ||
+    verified.data.amountNaira < expectedNaira
+  ) {
     return { error: "Payment couldn't be verified." };
   }
 
@@ -1207,7 +1298,7 @@ export async function verifyMarketplacePaymentAction(orderId: string, path: stri
   await service.from("notifications").insert({
     user_id: order.seller_id,
     type: "system",
-    message: "💰 Someone just paid for your marketplace listing. Check My Sales to arrange handoff.",
+    message: "💰 Someone just paid for your marketplace listing — it settled straight to your bank account. Check My Sales to arrange handoff.",
   });
 
   revalidatePath(path);

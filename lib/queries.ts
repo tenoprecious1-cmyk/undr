@@ -13,6 +13,7 @@ import type {
   MarketplaceListing,
   MarketplaceListingMedia,
   MarketplaceOrder,
+  MarketplacePayoutAccount,
   Notification,
   PlatformSettings,
   Post,
@@ -873,4 +874,26 @@ export async function fetchMarketplaceOrder(
   const { data, error } = await supabase.from("marketplace_orders").select(ORDER_SELECT).eq("id", id).maybeSingle();
   if (error || !data) return null;
   return mapRawOrder(data as unknown as RawOrder);
+}
+
+export async function fetchMyPayoutAccount(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<MarketplacePayoutAccount | null> {
+  const { data, error } = await supabase
+    .from("marketplace_payout_accounts")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as unknown as MarketplacePayoutAccount;
+}
+
+export async function sellerHasPayoutAccount(supabase: SupabaseClient, sellerId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("marketplace_payout_accounts")
+    .select("id")
+    .eq("user_id", sellerId)
+    .maybeSingle();
+  return !!data;
 }

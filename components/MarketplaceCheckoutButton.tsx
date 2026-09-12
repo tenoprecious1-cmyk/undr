@@ -6,31 +6,29 @@ import { createMarketplaceOrderAction, verifyMarketplacePaymentAction } from "@/
 
 declare global {
   interface Window {
-    PaystackPop?: {
-      setup: (opts: Record<string, unknown>) => { openIframe: () => void };
-    };
+    FlutterwaveCheckout?: (opts: Record<string, unknown>) => void;
   }
 }
 
-const PAYSTACK_SCRIPT_SRC = "https://js.paystack.co/v1/inline.js";
+const FLW_SCRIPT_SRC = "https://checkout.flutterwave.com/v3.js";
 
-function loadPaystackScript(): Promise<void> {
+function loadFlutterwaveScript(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.PaystackPop) {
+    if (window.FlutterwaveCheckout) {
       resolve();
       return;
     }
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${PAYSTACK_SCRIPT_SRC}"]`);
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${FLW_SCRIPT_SRC}"]`);
     if (existing) {
       existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () => reject(new Error("Paystack script failed to load")));
+      existing.addEventListener("error", () => reject(new Error("Flutterwave script failed to load")));
       return;
     }
     const script = document.createElement("script");
-    script.src = PAYSTACK_SCRIPT_SRC;
+    script.src = FLW_SCRIPT_SRC;
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Paystack script failed to load"));
+    script.onerror = () => reject(new Error("Flutterwave script failed to load"));
     document.body.appendChild(script);
   });
 }
@@ -40,13 +38,13 @@ export default function MarketplaceCheckoutButton({ listingId, path }: { listing
   const [status, setStatus] = useState<"idle" | "starting" | "verifying">("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+  const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
 
   async function onBuy() {
     setError(null);
 
     if (!publicKey) {
-      setError("Checkout isn't set up yet — ask an admin to add the Paystack keys.");
+      setError("Checkout isn't set up yet — ask an admin to add the Flutterwave keys.");
       return;
     }
 
@@ -59,29 +57,38 @@ export default function MarketplaceCheckoutButton({ listingId, path }: { listing
     }
 
     try {
-      await loadPaystackScript();
+      await loadFlutterwaveScript();
     } catch {
       setError("Couldn't load the checkout popup. Check your connection and try again.");
       setStatus("idle");
       return;
     }
 
-    if (!window.PaystackPop) {
+    if (!window.FlutterwaveCheckout) {
       setError("Couldn't load the checkout popup. Try again.");
       setStatus("idle");
       return;
     }
 
-    const handler = window.PaystackPop.setup({
-      key: publicKey,
-      email: init.buyerEmail,
-      amount: init.amountKobo,
-      ref: init.reference,
+    window.FlutterwaveCheckout({
+      public_key: publicKey,
+      tx_ref: init.txRef,
+      amount: init.amountNaira,
       currency: "NGN",
-      onClose: () => setStatus("idle"),
-      callback: () => {
+      payment_options: "card,ussd,banktransfer",
+      // Splits 100% of this charge straight to the seller's own bank
+      // account via their Flutterwave subaccount — UNDR never holds it.
+      subaccounts: [{ id: init.sellerSubaccountId, transaction_split_ratio: 100 }],
+      customer: { email: init.buyerEmail },
+      customizations: { title: "UNDR Marketplace", description: "Marketplace purchase" },
+      callback: (response: { transaction_id?: string | number; status?: string }) => {
+        if (!response?.transaction_id) {
+          setError("Payment didn't go through.");
+          setStatus("idle");
+          return;
+        }
         setStatus("verifying");
-        verifyMarketplacePaymentAction(init.orderId, path).then((result) => {
+        verifyMarketplacePaymentAction(init.orderId, String(response.transaction_id), path).then((result) => {
           if ("error" in result) {
             setError(result.error);
             setStatus("idle");
@@ -91,8 +98,8 @@ export default function MarketplaceCheckoutButton({ listingId, path }: { listing
           }
         });
       },
+      onclose: () => setStatus((s) => (s === "verifying" ? s : "idle")),
     });
-    handler.openIframe();
   }
 
   return (
@@ -107,7 +114,7 @@ export default function MarketplaceCheckoutButton({ listingId, path }: { listing
       </button>
       {error && <p className="mt-2 text-xs font-medium text-danger">{error}</p>}
       {!publicKey && (
-        <p className="mt-2 text-xs text-text-faint">Checkout preview — payments go live once Paystack keys are added.</p>
+        <p className="mt-2 text-xs text-text-faint">Checkout preview — payments go live once Flutterwave keys are added.</p>
       )}
     </div>
   );

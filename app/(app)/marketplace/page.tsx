@@ -75,8 +75,14 @@ export default async function MarketplacePage(props: PageProps<"/marketplace">) 
           </Link>
         ))}
         <Link
-          href="/marketplace/orders"
+          href="/marketplace/payout-account"
           className="ml-auto shrink-0 rounded-full bg-surface-2/60 px-3.5 py-1.5 text-xs font-semibold text-text-dim transition hover:text-text"
+        >
+          🏦 Payouts
+        </Link>
+        <Link
+          href="/marketplace/orders"
+          className="shrink-0 rounded-full bg-surface-2/60 px-3.5 py-1.5 text-xs font-semibold text-text-dim transition hover:text-text"
         >
           My orders
         </Link>

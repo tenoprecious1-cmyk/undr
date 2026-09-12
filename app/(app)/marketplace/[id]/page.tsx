@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchMarketplaceListing, isFeatureEnabled } from "@/lib/queries";
+import { fetchMarketplaceListing, isFeatureEnabled, sellerHasPayoutAccount } from "@/lib/queries";
 import { isAnyAdmin } from "@/lib/permissions";
 import { identityHandle, MARKETPLACE_CATEGORY_LABELS, nairaFormat } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
@@ -26,6 +26,7 @@ export default async function MarketplaceListingPage(props: PageProps<"/marketpl
 
   const isOwner = listing.seller_id === user!.id;
   const path = `/marketplace/${id}`;
+  const sellerPayoutReady = isOwner ? false : await sellerHasPayoutAccount(supabase, listing.seller_id);
 
   return (
     <div>
@@ -94,12 +95,24 @@ export default async function MarketplaceListingPage(props: PageProps<"/marketpl
 
         <div className="mt-6">
           {isOwner ? (
-            <MarketplaceListingOwnerActions listingId={listing.id} status={listing.status} path={path} />
-          ) : listing.status === "active" ? (
+            <>
+              <MarketplaceListingOwnerActions listingId={listing.id} status={listing.status} path={path} />
+              <p className="mt-3 text-center text-xs text-text-faint">
+                <Link href="/marketplace/payout-account" className="text-accent-2 hover:underline">
+                  Set up your payout account
+                </Link>{" "}
+                so buyers can actually pay you.
+              </p>
+            </>
+          ) : listing.status !== "active" ? (
+            <p className="rounded-full bg-surface-2/60 px-5 py-3 text-center text-sm font-semibold text-text-faint">
+              This listing is no longer available.
+            </p>
+          ) : sellerPayoutReady ? (
             <MarketplaceCheckoutButton listingId={listing.id} path={path} />
           ) : (
             <p className="rounded-full bg-surface-2/60 px-5 py-3 text-center text-sm font-semibold text-text-faint">
-              This listing is no longer available.
+              This seller hasn&apos;t set up payouts yet — check back later.
             </p>
           )}
         </div>

@@ -399,6 +399,22 @@ export function nairaFormat(kobo: number): string {
   return `₦${(kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 }
 
+// A seller's payout destination — the Flutterwave subaccount a sale splits
+// 100% into, so money lands straight in the seller's own bank account.
+export type MarketplacePayoutAccount = {
+  id: string;
+  user_id: string;
+  bank_code: string;
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  flutterwave_subaccount_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NigerianBank = { code: string; name: string };
+
 export function identityHandle(p: Pick<Profile, "animal" | "tag_number">) {
   return `Anonymous ${p.animal} #${p.tag_number}`;
 }
