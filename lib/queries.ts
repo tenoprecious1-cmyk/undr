@@ -131,6 +131,7 @@ export async function attachViewerState(
     viewer_bookmarked: bookmarkedSet.has(p.id),
     viewer_reposted: repostedSet.has(p.id),
     viewer_voted_option_id: voteMap.get(p.id) ?? null,
+    viewer_is_author: p.author_id === userId,
   }));
 }
 

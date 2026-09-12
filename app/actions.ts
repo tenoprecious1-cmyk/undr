@@ -221,6 +221,27 @@ export async function toggleRepostAction(postId: string, active: boolean, path: 
   revalidatePath(path);
 }
 
+export async function deletePostAction(postId: string, path: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  await assertLaunched(supabase, user.id);
+
+  // RLS ("users can delete their own posts") is the real authority here —
+  // this only ever deletes a row when author_id = auth.uid(), so this is
+  // safe even if someone calls it with a postId that isn't theirs.
+  await supabase.from("posts").delete().eq("id", postId).eq("author_id", user.id);
+
+  revalidatePath(path);
+  revalidatePath("/home");
+  revalidatePath("/explore");
+  revalidatePath("/chaos");
+  revalidatePath("/bookmarks");
+  revalidatePath("/profile");
+}
+
 export async function votePollAction(postId: string, optionId: string, path: string) {
   const supabase = await createClient();
   const {

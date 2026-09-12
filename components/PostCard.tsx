@@ -28,7 +28,15 @@ function renderContent(content: string) {
   });
 }
 
-export default function PostCard({ post, path = "/home" }: { post: Post; path?: string }) {
+export default function PostCard({
+  post,
+  path = "/home",
+  deleteRedirectTo,
+}: {
+  post: Post;
+  path?: string;
+  deleteRedirectTo?: string;
+}) {
   const isChaos = post.category === "chaos";
   const router = useRouter();
 
@@ -124,6 +132,7 @@ export default function PostCard({ post, path = "/home" }: { post: Post; path?: 
             viewerReacted={post.viewer_reacted}
             viewerBookmarked={post.viewer_bookmarked}
             viewerReposted={post.viewer_reposted}
+            deleteRedirectTo={deleteRedirectTo}
           />
         </div>
       </div>

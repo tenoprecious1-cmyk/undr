@@ -259,6 +259,7 @@ export type Post = {
   viewer_bookmarked: boolean;
   viewer_reposted: boolean;
   viewer_voted_option_id?: string | null;
+  viewer_is_author?: boolean;
   promotion?: PostPromotion | null;
 };
 

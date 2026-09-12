@@ -31,7 +31,7 @@ export default async function PostDetailPage(props: PageProps<"/post/[id]">) {
         <h1 className="text-[15px] font-bold text-text">Thread</h1>
       </div>
 
-      <PostCard post={withState} path={`/post/${id}`} />
+      <PostCard post={withState} path={`/post/${id}`} deleteRedirectTo="/home" />
 
       <Composer
         profile={profile as Profile}

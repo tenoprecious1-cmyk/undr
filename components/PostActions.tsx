@@ -1,9 +1,15 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { compactNumber } from "@/lib/format";
-import { toggleReactionAction, toggleBookmarkAction, toggleRepostAction } from "@/app/actions";
+import {
+  toggleReactionAction,
+  toggleBookmarkAction,
+  toggleRepostAction,
+  deletePostAction,
+} from "@/app/actions";
 import type { Post } from "@/lib/types";
 import CleanShotModal from "./CleanShot/CleanShotModal";
 
@@ -18,6 +24,7 @@ export default function PostActions({
   viewerReacted,
   viewerBookmarked,
   viewerReposted,
+  deleteRedirectTo,
 }: {
   post: Post;
   postId: string;
@@ -29,10 +36,21 @@ export default function PostActions({
   viewerReacted: boolean;
   viewerBookmarked: boolean;
   viewerReposted: boolean;
+  deleteRedirectTo?: string;
 }) {
+  const router = useRouter();
   const [, startTransition] = useTransition();
   const [burst, setBurst] = useState(false);
   const [cleanShotOpen, setCleanShotOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const confirmTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (confirmTimeout.current) clearTimeout(confirmTimeout.current);
+    };
+  }, []);
 
   const [reaction, setReaction] = useOptimistic(
     { active: viewerReacted, count: reactionCount },
@@ -70,6 +88,27 @@ export default function PostActions({
     startTransition(async () => {
       setRepost(!repost.active);
       await toggleRepostAction(postId, repost.active, path);
+    });
+  }
+
+  function onDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (deleting) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      confirmTimeout.current = setTimeout(() => setConfirmingDelete(false), 4000);
+      return;
+    }
+    if (confirmTimeout.current) clearTimeout(confirmTimeout.current);
+    setDeleting(true);
+    startTransition(async () => {
+      await deletePostAction(postId, path);
+      if (deleteRedirectTo) {
+        router.push(deleteRedirectTo);
+      } else {
+        setDeleting(false);
+        setConfirmingDelete(false);
+      }
     });
   }
 
@@ -155,11 +194,37 @@ export default function PostActions({
         <CleanShotIcon className="h-[18px] w-[18px]" />
       </button>
 
+      {post.viewer_is_author && (
+        <button
+          type="button"
+          onClick={onDeleteClick}
+          disabled={deleting}
+          title={confirmingDelete ? "Tap again to delete" : "Delete"}
+          className={`group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition disabled:opacity-50 ${
+            confirmingDelete ? "text-danger" : "hover:text-danger"
+          }`}
+        >
+          <TrashIcon className="h-[18px] w-[18px]" />
+          {confirmingDelete && <span className="font-semibold">Sure?</span>}
+        </button>
+      )}
+
       {cleanShotOpen && <CleanShotModal post={post} onClose={() => setCleanShotOpen(false)} />}
     </div>
   );
 }
 
+function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <path
+        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0-.8 12.1a2 2 0 0 1-2 1.9H8.8a2 2 0 0 1-2-1.9L6 7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 function ReplyIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
