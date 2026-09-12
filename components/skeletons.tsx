@@ -64,6 +64,22 @@ export function ListRowsSkeleton({ count = 6 }: { count?: number }) {
   );
 }
 
+export function MarketplaceGridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="overflow-hidden rounded-2xl border border-border-soft bg-surface/40">
+          <Bar className="aspect-square w-full rounded-none" />
+          <div className="p-2.5">
+            <Bar className="h-3 w-3/4" />
+            <Bar className="mt-2 h-3.5 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AdminPageSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <div>

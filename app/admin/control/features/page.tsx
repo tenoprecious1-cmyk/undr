@@ -8,11 +8,14 @@ import FeatureFlagToggle from "./FeatureFlagToggle";
 const CATEGORY_LABELS: Record<string, string> = {
   core_social: "Core Social",
   culture: "Culture",
+  commerce: "Commerce",
 };
 
 const CATEGORY_BLURBS: Record<string, string> = {
   core_social: "The X-style feed core. Shown for visibility — not wired to hide anything yet.",
   culture: "Face-Off, Rooms, Chaos, and drop features. Off by default at launch — flip on when ready.",
+  commerce:
+    "Marketplace. Off by default — while it's off, only admins can see and use it at /marketplace to preview. Flip it on here once you're happy, and it goes live for everyone on both desktop and mobile instantly.",
 };
 
 export default async function FeatureControlPage() {
@@ -60,7 +63,7 @@ export default async function FeatureControlPage() {
       </div>
 
       <p className="mt-6 text-xs text-text-faint">
-        Face-Off, Rooms, and Chaos are the only culture flags wired to actually hide UI right now. UNDR Pulse,
+        Face-Off, Rooms, Chaos, and Marketplace are the only flags wired to actually hide UI right now. UNDR Pulse,
         Random Drop, and Drop of the Day toggle in the database but have no feature behind them yet.
       </p>
     </div>

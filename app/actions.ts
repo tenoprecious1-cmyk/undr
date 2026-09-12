@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { can, isAnyAdmin } from "@/lib/permissions";
-import { fetchPlatformSettings, fetchReplies } from "@/lib/queries";
+import { fetchPlatformSettings, fetchReplies, isFeatureEnabled } from "@/lib/queries";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { PlatformMode, PlatformPhase, IdentityMode, PromoType, RoleKey, Profile } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -21,6 +22,17 @@ async function assertLaunched(supabase: SupabaseClient, userId: string) {
   if (settings?.mode === "pre_launch" && !isAdmin) {
     redirect("/home");
   }
+}
+
+// Marketplace is a preview feature — off by default. While off, only
+// admins (previewing it) may use the routes/actions; everyone else gets
+// bounced, same pattern as the pre-launch lock above.
+async function assertMarketplaceEnabled(supabase: SupabaseClient, userId: string) {
+  const [enabled, isAdmin] = await Promise.all([
+    isFeatureEnabled(supabase, "marketplace"),
+    isAnyAdmin(supabase, userId),
+  ]);
+  if (!enabled && !isAdmin) redirect("/home");
 }
 
 export async function signUpAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -964,4 +976,260 @@ export async function replayOnboardingTourAction() {
 
   await supabase.from("profiles").update({ onboarding_tour_status: "not_started" }).eq("id", user.id);
   redirect("/home");
+}
+
+// ============ MARKETPLACE ============
+// Preview feature behind feature_flags.marketplace. Until it's flipped on
+// from /admin/control/features, only admins can reach these — that's the
+// "preview before it goes live for everyone" workflow.
+
+const MARKET_MAX_IMAGES = 4;
+const MARKET_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MARKET_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MARKET_CATEGORIES = new Set(["books", "electronics", "fashion", "food", "services", "other"]);
+
+export async function createMarketplaceListingAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  await assertLaunched(supabase, user.id);
+  await assertMarketplaceEnabled(supabase, user.id);
+
+  const title = String(formData.get("title") ?? "").trim().slice(0, 120);
+  const description = String(formData.get("description") ?? "").trim().slice(0, 2000);
+  const priceNaira = Number(formData.get("price") ?? 0);
+  const categoryRaw = String(formData.get("category") ?? "other");
+  const category = MARKET_CATEGORIES.has(categoryRaw) ? categoryRaw : "other";
+  const conditionRaw = String(formData.get("condition") ?? "");
+  const condition = conditionRaw === "new" || conditionRaw === "used" ? conditionRaw : null;
+  const contactWhatsapp = String(formData.get("contact_whatsapp") ?? "").trim().slice(0, 40) || null;
+  const contactMeetup = String(formData.get("contact_meetup") ?? "").trim().slice(0, 120) || null;
+
+  if (!title || !Number.isFinite(priceNaira) || priceNaira <= 0) return;
+
+  const images = formData
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && f.size > 0 && MARKET_IMAGE_TYPES.has(f.type))
+    .slice(0, MARKET_MAX_IMAGES)
+    .filter((f) => f.size <= MARKET_MAX_IMAGE_BYTES);
+
+  const { data: listing, error } = await supabase
+    .from("marketplace_listings")
+    .insert({
+      seller_id: user.id,
+      title,
+      description,
+      price_kobo: Math.round(priceNaira * 100),
+      category,
+      condition,
+      contact_whatsapp: contactWhatsapp,
+      contact_meetup: contactMeetup,
+    })
+    .select("id")
+    .single();
+
+  if (error || !listing) return;
+
+  if (images.length > 0) {
+    const uploaded: { storage_path: string; position: number }[] = [];
+    for (let i = 0; i < images.length; i++) {
+      const file = images[i];
+      const path = `${user.id}/${listing.id}/${i}-${Date.now()}.${extFromMime(file.type)}`;
+      const { error: uploadError } = await supabase.storage
+        .from("marketplace-media")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (!uploadError) uploaded.push({ storage_path: path, position: i });
+    }
+    if (uploaded.length > 0) {
+      await supabase
+        .from("marketplace_listing_media")
+        .insert(uploaded.map((m) => ({ listing_id: listing.id, ...m })));
+    }
+  }
+
+  revalidatePath("/marketplace");
+  redirect(`/marketplace/${listing.id}`);
+}
+
+export async function setMarketplaceListingStatusAction(
+  listingId: string,
+  status: "active" | "sold" | "removed",
+  path: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("marketplace_listings")
+    .update({ status })
+    .eq("id", listingId)
+    .eq("seller_id", user.id);
+
+  revalidatePath(path);
+  revalidatePath("/marketplace");
+}
+
+export async function deleteMarketplaceListingAction(listingId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase.from("marketplace_listings").delete().eq("id", listingId).eq("seller_id", user.id);
+  revalidatePath("/marketplace");
+  redirect("/marketplace");
+}
+
+export type MarketplaceCheckoutInit =
+  | { orderId: string; reference: string; amountKobo: number; buyerEmail: string }
+  | { error: string };
+
+// Starts checkout: creates a pending order with a fresh reference. This is
+// the only marketplace-orders write a buyer's own browser session is ever
+// allowed to make directly — everything past "pending" goes through
+// verifyMarketplacePaymentAction below.
+export async function createMarketplaceOrderAction(listingId: string): Promise<MarketplaceCheckoutInit> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  await assertLaunched(supabase, user.id);
+  await assertMarketplaceEnabled(supabase, user.id);
+
+  const { data: listing } = await supabase
+    .from("marketplace_listings")
+    .select("id, seller_id, price_kobo, status")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (!listing || listing.status !== "active") return { error: "This listing isn't available anymore." };
+  if (listing.seller_id === user.id) return { error: "You can't buy your own listing." };
+
+  const reference = `undr_${listing.id.slice(0, 8)}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  const { data: order, error } = await supabase
+    .from("marketplace_orders")
+    .insert({
+      listing_id: listing.id,
+      buyer_id: user.id,
+      seller_id: listing.seller_id,
+      amount_kobo: listing.price_kobo,
+      payment_reference: reference,
+    })
+    .select("id")
+    .single();
+
+  if (error || !order) return { error: "Couldn't start checkout. Try again." };
+
+  return {
+    orderId: order.id,
+    reference,
+    amountKobo: listing.price_kobo,
+    buyerEmail: user.email ?? "buyer@undr.app",
+  };
+}
+
+export type MarketplaceVerifyResult = { ok: true } | { error: string };
+
+// The only path that can ever mark a marketplace order "paid". Re-verifies
+// the transaction against Paystack's own API (status + amount + reference
+// all have to match) before writing anything, and the write itself uses
+// the service-role client specifically because RLS has no client-reachable
+// path to "paid" — see lib/supabase/service.ts.
+export async function verifyMarketplacePaymentAction(orderId: string, path: string): Promise<MarketplaceVerifyResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: order } = await supabase
+    .from("marketplace_orders")
+    .select("id, buyer_id, seller_id, listing_id, amount_kobo, status, payment_reference")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (!order || order.buyer_id !== user.id) return { error: "Order not found." };
+  if (order.status === "paid") return { ok: true };
+  if (order.status !== "pending") return { error: "This order can't be verified anymore." };
+
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) {
+    return { error: "Checkout isn't fully set up yet — ask an admin to add the Paystack keys." };
+  }
+
+  let verified: { status: string; amount: number } | null = null;
+  try {
+    const res = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(order.payment_reference)}`,
+      { headers: { Authorization: `Bearer ${secretKey}` }, cache: "no-store" }
+    );
+    const json = await res.json();
+    if (json?.status && json?.data) {
+      verified = { status: String(json.data.status), amount: Number(json.data.amount) };
+    }
+  } catch {
+    return { error: "Couldn't reach Paystack to verify the payment. Try again." };
+  }
+
+  if (!verified || verified.status !== "success" || verified.amount !== order.amount_kobo) {
+    return { error: "Payment couldn't be verified." };
+  }
+
+  const service = createServiceClient();
+  if (!service) {
+    return { error: "Checkout isn't fully set up yet — ask an admin to add the Supabase service role key." };
+  }
+
+  const { error: updateError, data: updated } = await service
+    .from("marketplace_orders")
+    .update({ status: "paid" })
+    .eq("id", order.id)
+    .eq("status", "pending") // guards against a double-verify race
+    .select("id")
+    .maybeSingle();
+
+  if (updateError || !updated) return { error: "Couldn't finalize the order. Try again." };
+
+  await service
+    .from("marketplace_listings")
+    .update({ status: "sold" })
+    .eq("id", order.listing_id)
+    .eq("status", "active");
+
+  await service.from("notifications").insert({
+    user_id: order.seller_id,
+    type: "system",
+    message: "💰 Someone just paid for your marketplace listing. Check My Sales to arrange handoff.",
+  });
+
+  revalidatePath(path);
+  revalidatePath("/marketplace");
+  revalidatePath("/marketplace/orders");
+  return { ok: true };
+}
+
+export async function cancelMarketplaceOrderAction(orderId: string, path: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("marketplace_orders")
+    .update({ status: "cancelled" })
+    .eq("id", orderId)
+    .eq("buyer_id", user.id)
+    .eq("status", "pending");
+
+  revalidatePath(path);
+  revalidatePath("/marketplace/orders");
 }

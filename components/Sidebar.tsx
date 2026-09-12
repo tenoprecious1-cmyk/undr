@@ -23,10 +23,12 @@ export default function Sidebar({
   profile,
   unreadCount = 0,
   isAdmin = false,
+  marketplaceEnabled = false,
 }: {
   profile: Profile;
   unreadCount?: number;
   isAdmin?: boolean;
+  marketplaceEnabled?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -39,6 +41,23 @@ export default function Sidebar({
         </Link>
 
         <nav className="flex flex-col gap-1">
+          {marketplaceEnabled && (
+            <Link
+              href="/marketplace"
+              className={`group flex items-center gap-3.5 rounded-full px-3.5 py-2.5 text-[15px] transition-colors ${
+                pathname.startsWith("/marketplace")
+                  ? "bg-surface text-text font-semibold"
+                  : "text-text-dim hover:text-text hover:bg-surface/60"
+              }`}
+            >
+              <ShopIcon
+                className={`h-5 w-5 shrink-0 transition-colors ${
+                  pathname.startsWith("/marketplace") ? "text-accent" : "text-text-faint group-hover:text-text-dim"
+                }`}
+              />
+              Marketplace
+            </Link>
+          )}
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
@@ -188,6 +207,17 @@ function BellIcon(props: React.SVGProps<SVGSVGElement>) {
         strokeLinejoin="round"
       />
       <path d="M10 19a2 2 0 0 0 4 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+function ShopIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <path
+        d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2l.8 3.2a2 2 0 0 1-2 2.5H5.2a2 2 0 0 1-2-2.5L4 8Z"
+        strokeLinejoin="round"
+      />
+      <path d="M6 13.5V18a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4.5M9 8V6a3 3 0 0 1 6 0v2" strokeLinecap="round" />
     </svg>
   );
 }

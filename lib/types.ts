@@ -331,6 +331,74 @@ export type Notification = {
   actor: Profile | null;
 };
 
+// ============ MARKETPLACE ============
+
+export type MarketplaceListingCategory =
+  | "books"
+  | "electronics"
+  | "fashion"
+  | "food"
+  | "services"
+  | "other";
+
+export type MarketplaceListingStatus = "active" | "sold" | "removed";
+
+export const MARKETPLACE_CATEGORY_LABELS: Record<MarketplaceListingCategory, string> = {
+  books: "📚 Books",
+  electronics: "🔌 Electronics",
+  fashion: "👕 Fashion",
+  food: "🍲 Food",
+  services: "🛠️ Services",
+  other: "🏷️ Other",
+};
+
+export type MarketplaceListingMedia = {
+  id: string;
+  listing_id: string;
+  storage_path: string;
+  position: number;
+  url: string;
+};
+
+export type MarketplaceListing = {
+  id: string;
+  seller_id: string;
+  title: string;
+  description: string;
+  price_kobo: number;
+  category: MarketplaceListingCategory;
+  condition: "new" | "used" | null;
+  contact_whatsapp: string | null;
+  contact_meetup: string | null;
+  status: MarketplaceListingStatus;
+  created_at: string;
+  updated_at: string;
+  seller: Profile;
+  media: MarketplaceListingMedia[];
+  viewer_is_seller?: boolean;
+};
+
+export type MarketplaceOrderStatus = "pending" | "paid" | "cancelled" | "failed";
+
+export type MarketplaceOrder = {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  amount_kobo: number;
+  status: MarketplaceOrderStatus;
+  payment_reference: string;
+  created_at: string;
+  updated_at: string;
+  listing: Pick<MarketplaceListing, "id" | "title" | "status"> & { media: MarketplaceListingMedia[] };
+  buyer: Profile;
+  seller: Profile;
+};
+
+export function nairaFormat(kobo: number): string {
+  return `₦${(kobo / 100).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+}
+
 export function identityHandle(p: Pick<Profile, "animal" | "tag_number">) {
   return `Anonymous ${p.animal} #${p.tag_number}`;
 }

@@ -43,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const faceoffEnabled = flags.faceoff ?? true;
   const roomsEnabled = flags.rooms ?? true;
+  const marketplaceEnabled = (flags.marketplace ?? false) || showAdminNav;
 
   if (settings?.mode === "pre_launch" && !showAdminNav) {
     return (
@@ -55,18 +56,30 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="relative z-10 mx-auto flex max-w-[1280px] justify-center">
-      <Sidebar profile={profile as Profile} unreadCount={unreadCount} isAdmin={showAdminNav} />
+      <Sidebar
+        profile={profile as Profile}
+        unreadCount={unreadCount}
+        isAdmin={showAdminNav}
+        marketplaceEnabled={marketplaceEnabled}
+      />
       <main className="min-h-dvh w-full max-w-[620px] border-x border-border-soft pb-20 lg:pb-0">
         <div className="sticky top-0 z-20 glass flex items-center justify-between border-b border-border-soft px-4 py-3 lg:hidden">
           <span className="flex items-center gap-2 text-lg font-bold">
             <span>🕳️</span> UNDR
           </span>
-          <Link href="/notifications" className="relative grid h-8 w-8 place-items-center rounded-full hover:bg-surface-2">
-            🔔
-            {unreadCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent" />
+          <div className="flex items-center gap-1">
+            {marketplaceEnabled && (
+              <Link href="/marketplace" className="grid h-8 w-8 place-items-center rounded-full hover:bg-surface-2">
+                🛍️
+              </Link>
             )}
-          </Link>
+            <Link href="/notifications" className="relative grid h-8 w-8 place-items-center rounded-full hover:bg-surface-2">
+              🔔
+              {unreadCount > 0 && (
+                <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent" />
+              )}
+            </Link>
+          </div>
         </div>
         {children}
       </main>

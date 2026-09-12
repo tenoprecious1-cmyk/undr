@@ -10,6 +10,9 @@ import type {
   FaceOff,
   FeatureFlag,
   Linkup,
+  MarketplaceListing,
+  MarketplaceListingMedia,
+  MarketplaceOrder,
   Notification,
   PlatformSettings,
   Post,
@@ -673,4 +676,201 @@ export async function isFeatureEnabled(supabase: SupabaseClient, key: string): P
   const { data, error } = await supabase.from("feature_flags").select("enabled").eq("key", key).maybeSingle();
   if (error || !data) return true; // fail-open if the flags table/row is missing — don't break the app
   return data.enabled;
+}
+
+// ============ MARKETPLACE ============
+
+function publicMarketplaceMediaUrl(storagePath: string): string {
+  const base =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://rrsnvssbimcfotyuaare.supabase.co";
+  return `${base}/storage/v1/object/public/marketplace-media/${storagePath}`;
+}
+
+const LISTING_SELECT = `
+  id, seller_id, title, description, price_kobo, category, condition,
+  contact_whatsapp, contact_meetup, status, created_at, updated_at,
+  seller:profiles!marketplace_listings_seller_id_fkey(*),
+  marketplace_listing_media(*)
+`;
+
+type RawListingMedia = {
+  id: string;
+  listing_id: string;
+  storage_path: string;
+  position: number;
+};
+
+type RawListing = {
+  id: string;
+  seller_id: string;
+  title: string;
+  description: string;
+  price_kobo: number;
+  category: MarketplaceListing["category"];
+  condition: MarketplaceListing["condition"];
+  contact_whatsapp: string | null;
+  contact_meetup: string | null;
+  status: MarketplaceListing["status"];
+  created_at: string;
+  updated_at: string;
+  seller: Profile;
+  marketplace_listing_media: RawListingMedia[] | null;
+};
+
+function mapListingMedia(rows: RawListingMedia[] | null): MarketplaceListingMedia[] {
+  return (rows ?? [])
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((m) => ({
+      id: m.id,
+      listing_id: m.listing_id,
+      storage_path: m.storage_path,
+      position: m.position,
+      url: publicMarketplaceMediaUrl(m.storage_path),
+    }));
+}
+
+function mapRawListing(row: RawListing): MarketplaceListing {
+  return {
+    id: row.id,
+    seller_id: row.seller_id,
+    title: row.title,
+    description: row.description,
+    price_kobo: row.price_kobo,
+    category: row.category,
+    condition: row.condition,
+    contact_whatsapp: row.contact_whatsapp,
+    contact_meetup: row.contact_meetup,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    seller: row.seller,
+    media: mapListingMedia(row.marketplace_listing_media),
+  };
+}
+
+export function attachViewerIsSeller(userId: string | null, listings: MarketplaceListing[]): MarketplaceListing[] {
+  return listings.map((l) => ({ ...l, viewer_is_seller: !!userId && l.seller_id === userId }));
+}
+
+export async function fetchMarketplaceListings(
+  supabase: SupabaseClient,
+  opts: { category?: string; limit?: number } = {}
+): Promise<MarketplaceListing[]> {
+  let query = supabase
+    .from("marketplace_listings")
+    .select(LISTING_SELECT)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(opts.limit ?? 60);
+  if (opts.category && opts.category !== "all") query = query.eq("category", opts.category);
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return (data as unknown as RawListing[]).map(mapRawListing);
+}
+
+export async function fetchMyMarketplaceListings(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<MarketplaceListing[]> {
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .select(LISTING_SELECT)
+    .eq("seller_id", userId)
+    .neq("status", "removed")
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawListing[]).map(mapRawListing);
+}
+
+export async function fetchMarketplaceListing(
+  supabase: SupabaseClient,
+  id: string
+): Promise<MarketplaceListing | null> {
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .select(LISTING_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapRawListing(data as unknown as RawListing);
+}
+
+const ORDER_SELECT = `
+  id, listing_id, buyer_id, seller_id, amount_kobo, status, payment_reference, created_at, updated_at,
+  buyer:profiles!marketplace_orders_buyer_id_fkey(*),
+  seller:profiles!marketplace_orders_seller_id_fkey(*),
+  listing:marketplace_listings(id, title, status, marketplace_listing_media(*))
+`;
+
+type RawOrder = {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  amount_kobo: number;
+  status: MarketplaceOrder["status"];
+  payment_reference: string;
+  created_at: string;
+  updated_at: string;
+  buyer: Profile;
+  seller: Profile;
+  listing: { id: string; title: string; status: MarketplaceListing["status"]; marketplace_listing_media: RawListingMedia[] | null } | null;
+};
+
+function mapRawOrder(row: RawOrder): MarketplaceOrder {
+  return {
+    id: row.id,
+    listing_id: row.listing_id,
+    buyer_id: row.buyer_id,
+    seller_id: row.seller_id,
+    amount_kobo: row.amount_kobo,
+    status: row.status,
+    payment_reference: row.payment_reference,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    buyer: row.buyer,
+    seller: row.seller,
+    listing: {
+      id: row.listing?.id ?? row.listing_id,
+      title: row.listing?.title ?? "Deleted listing",
+      status: row.listing?.status ?? "removed",
+      media: mapListingMedia(row.listing?.marketplace_listing_media ?? null),
+    },
+  };
+}
+
+export async function fetchMarketplaceOrdersAsBuyer(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<MarketplaceOrder[]> {
+  const { data, error } = await supabase
+    .from("marketplace_orders")
+    .select(ORDER_SELECT)
+    .eq("buyer_id", userId)
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawOrder[]).map(mapRawOrder);
+}
+
+export async function fetchMarketplaceOrdersAsSeller(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<MarketplaceOrder[]> {
+  const { data, error } = await supabase
+    .from("marketplace_orders")
+    .select(ORDER_SELECT)
+    .eq("seller_id", userId)
+    .order("created_at", { ascending: false });
+  if (error || !data) return [];
+  return (data as unknown as RawOrder[]).map(mapRawOrder);
+}
+
+export async function fetchMarketplaceOrder(
+  supabase: SupabaseClient,
+  id: string
+): Promise<MarketplaceOrder | null> {
+  const { data, error } = await supabase.from("marketplace_orders").select(ORDER_SELECT).eq("id", id).maybeSingle();
+  if (error || !data) return null;
+  return mapRawOrder(data as unknown as RawOrder);
 }
