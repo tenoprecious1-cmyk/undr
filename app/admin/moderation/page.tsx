@@ -43,20 +43,20 @@ export default async function AdminModerationPage() {
       <h2 className="mt-6 text-sm font-bold uppercase tracking-wide text-text-faint">Recent posts</h2>
       <div className="mt-2 flex flex-col gap-2">
         {posts.map((p) => (
-          <div key={p.id} className="flex items-start gap-3 rounded-2xl border border-border-soft bg-surface/40 p-3">
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1 text-xs text-text-faint">
+          <div key={p.id} className="flex flex-wrap items-start gap-3 rounded-2xl border border-border-soft bg-surface/40 p-3">
+            <div className="min-w-0 flex-1 basis-full sm:basis-0">
+              <p className="flex flex-wrap items-center gap-1 text-xs text-text-faint">
                 {identityHandle(p.author)} <UserBadges profile={p.author} /> · {timeAgo(p.created_at)} · {p.category}
               </p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm text-text">{p.content}</p>
             </div>
             {canFeature && (
-              <form action={adminPromotePostAction} className="flex shrink-0 items-center gap-1">
+              <form action={adminPromotePostAction} className="flex flex-wrap shrink-0 items-center gap-1.5">
                 <input type="hidden" name="post_id" value={p.id} />
                 <select
                   name="promo_type"
                   defaultValue=""
-                  className="rounded-full border border-border-soft bg-surface px-2.5 py-1.5 text-xs text-text-dim focus:border-accent focus:outline-none"
+                  className="rounded-full border border-border-soft bg-surface px-2.5 py-2 text-xs text-text-dim focus:border-accent focus:outline-none"
                 >
                   <option value="" disabled>
                     Feature as…
@@ -69,7 +69,7 @@ export default async function AdminModerationPage() {
                 </select>
                 <button
                   type="submit"
-                  className="rounded-full border border-border-soft px-3 py-1.5 text-xs font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
+                  className="rounded-full border border-border-soft px-3 py-2 text-xs font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
                 >
                   Apply
                 </button>
@@ -78,7 +78,7 @@ export default async function AdminModerationPage() {
             <form action={adminDeletePostAction.bind(null, p.id)}>
               <button
                 type="submit"
-                className="shrink-0 rounded-full border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:bg-danger/10"
+                className="shrink-0 rounded-full border border-danger/40 px-3 py-2 text-xs font-semibold text-danger transition hover:bg-danger/10"
               >
                 Delete
               </button>
@@ -102,7 +102,7 @@ export default async function AdminModerationPage() {
             <form action={adminDeleteRoomMessageAction.bind(null, m.id)}>
               <button
                 type="submit"
-                className="shrink-0 rounded-full border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:bg-danger/10"
+                className="shrink-0 rounded-full border border-danger/40 px-3 py-2 text-xs font-semibold text-danger transition hover:bg-danger/10"
               >
                 Delete
               </button>
@@ -129,7 +129,7 @@ export default async function AdminModerationPage() {
             <form action={adminDeleteLinkupAction.bind(null, l.id)}>
               <button
                 type="submit"
-                className="shrink-0 rounded-full border border-danger/40 px-3 py-1.5 text-xs font-semibold text-danger transition hover:bg-danger/10"
+                className="shrink-0 rounded-full border border-danger/40 px-3 py-2 text-xs font-semibold text-danger transition hover:bg-danger/10"
               >
                 Delete
               </button>

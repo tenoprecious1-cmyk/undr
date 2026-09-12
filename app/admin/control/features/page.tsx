@@ -50,12 +50,9 @@ export default async function FeatureControlPage() {
             </p>
             <p className="mt-1 text-xs text-text-faint">{CATEGORY_BLURBS[category]}</p>
 
-            <div className="mt-4 flex flex-col gap-3.5">
+            <div className="mt-4 flex flex-col gap-1.5">
               {categoryFlags.map((flag) => (
-                <div key={flag.key} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-text">{flag.name}</span>
-                  <FeatureFlagToggle flagKey={flag.key} initialEnabled={flag.enabled} />
-                </div>
+                <FeatureFlagToggle key={flag.key} flagKey={flag.key} initialEnabled={flag.enabled} name={flag.name} />
               ))}
             </div>
           </section>

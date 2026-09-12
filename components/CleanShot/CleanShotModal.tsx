@@ -150,7 +150,7 @@ export default function CleanShotModal({ post, onClose }: { post: Post; onClose:
           <button
             type="button"
             onClick={phase === "select-replies" ? () => setPhase("edit") : onClose}
-            className="grid h-8 w-8 place-items-center rounded-full text-text-faint transition hover:bg-surface-2 hover:text-text"
+            className="grid h-9 w-9 place-items-center rounded-full text-text-faint transition hover:bg-surface-2 hover:text-text"
             aria-label="Close"
           >
             {phase === "select-replies" ? "‹" : "✕"}
@@ -292,7 +292,7 @@ export default function CleanShotModal({ post, onClose }: { post: Post; onClose:
           )}
         </div>
 
-        <div className="flex gap-3 border-t border-border-soft px-5 py-4">
+        <div className="flex flex-col gap-2 border-t border-border-soft px-5 py-4">
           {phase === "select-replies" ? (
             <button
               type="button"
@@ -303,29 +303,31 @@ export default function CleanShotModal({ post, onClose }: { post: Post; onClose:
             </button>
           ) : phase === "ready" ? (
             <>
-              <button
-                type="button"
-                onClick={handleBackToEdit}
-                className="flex-1 rounded-full border border-border-soft py-3 text-sm font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
-              >
-                Back to Edit
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="flex-1 rounded-full border border-border-soft py-3 text-sm font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
-              >
-                Save Image
-              </button>
               {canShare && (
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="flex-1 rounded-full bg-accent py-3 text-sm font-bold text-white transition hover:brightness-110"
+                  className="w-full rounded-full bg-accent py-3 text-sm font-bold text-white transition hover:brightness-110"
                 >
                   Share
                 </button>
               )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleBackToEdit}
+                  className="flex-1 rounded-full border border-border-soft py-3 text-sm font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="flex-1 rounded-full border border-border-soft py-3 text-sm font-semibold text-text-dim transition hover:border-accent/50 hover:text-text"
+                >
+                  Save Image
+                </button>
+              </div>
             </>
           ) : (
             <>

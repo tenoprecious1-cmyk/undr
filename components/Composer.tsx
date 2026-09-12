@@ -183,7 +183,7 @@ export default function Composer({
                   type="button"
                   onClick={() => removeImage(i)}
                   aria-label="Remove image"
-                  className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-xs text-white backdrop-blur transition hover:bg-black/90"
+                  className="absolute right-1.5 top-1.5 grid h-9 w-9 place-items-center rounded-full bg-black/70 text-sm text-white backdrop-blur transition hover:bg-black/90"
                 >
                   ✕
                 </button>
@@ -199,7 +199,7 @@ export default function Composer({
               type="button"
               onClick={removeVideo}
               aria-label="Remove video"
-              className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-xs text-white backdrop-blur transition hover:bg-black/90"
+              className="absolute right-1.5 top-1.5 grid h-9 w-9 place-items-center rounded-full bg-black/70 text-sm text-white backdrop-blur transition hover:bg-black/90"
             >
               ✕
             </button>
@@ -271,14 +271,14 @@ export default function Composer({
         {parentId && <input type="hidden" name="parent_id" value={parentId} />}
         {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
 
-        <div className="mt-2 flex items-center justify-between">
-          <div className="flex items-center gap-1">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
               disabled={pollOpen || !!video || images.length >= MAX_IMAGES}
               title="Add images"
-              className="grid h-8 w-8 place-items-center rounded-full text-base text-text-dim transition hover:bg-accent-soft disabled:opacity-30"
+              className="grid h-9 w-9 place-items-center rounded-full text-base text-text-dim transition hover:bg-accent-soft disabled:opacity-30"
             >
               🖼️
             </button>
@@ -287,7 +287,7 @@ export default function Composer({
               onClick={() => videoInputRef.current?.click()}
               disabled={pollOpen || images.length > 0 || !!video}
               title="Add video"
-              className="grid h-8 w-8 place-items-center rounded-full text-base text-text-dim transition hover:bg-accent-soft disabled:opacity-30"
+              className="grid h-9 w-9 place-items-center rounded-full text-base text-text-dim transition hover:bg-accent-soft disabled:opacity-30"
             >
               🎥
             </button>
@@ -296,18 +296,18 @@ export default function Composer({
               onClick={() => setPollOpen((v) => !v)}
               disabled={hasMedia}
               title="Poll"
-              className={`grid h-8 w-8 place-items-center rounded-full text-base transition hover:bg-accent-soft disabled:opacity-30 ${
+              className={`grid h-9 w-9 place-items-center rounded-full text-base transition hover:bg-accent-soft disabled:opacity-30 ${
                 pollOpen ? "bg-accent-soft text-accent-2" : "text-text-dim"
               }`}
             >
               📊
             </button>
             {chaosEnabled && (
-              <div className="ml-2 flex rounded-full border border-border p-0.5 text-xs font-semibold">
+              <div className="ml-1 flex rounded-full border border-border p-0.5 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setCategory("gist")}
-                  className={`rounded-full px-3 py-1 transition ${
+                  className={`rounded-full px-3 py-1.5 transition ${
                     category === "gist" ? "bg-accent text-white" : "text-text-dim"
                   }`}
                 >
@@ -316,7 +316,7 @@ export default function Composer({
                 <button
                   type="button"
                   onClick={() => setCategory("chaos")}
-                  className={`rounded-full px-3 py-1 transition ${
+                  className={`rounded-full px-3 py-1.5 transition ${
                     category === "chaos" ? "bg-chaos text-white" : "text-text-dim"
                   }`}
                 >

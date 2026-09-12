@@ -65,7 +65,7 @@ export default async function AdminBadgesPage(props: PageProps<"/admin/badges">)
       <h1 className="text-2xl font-bold text-text">Badge Management</h1>
       <p className="mt-1 text-sm text-text-faint">Verified status, UNDR Gold, and achievement badges.</p>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-border-soft bg-surface/40 p-4 text-center">
           <VerifiedBadgeIcon className="mx-auto h-6 w-6" />
           <p className="mt-2 text-2xl font-bold tabular text-text">{stats.verifiedCount}</p>

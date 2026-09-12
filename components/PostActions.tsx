@@ -77,7 +77,7 @@ export default function PostActions({
     <div className="mt-3 flex max-w-md items-center justify-between text-text-faint">
       <Link
         href={`/post/${postId}`}
-        className="group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-accent-2"
+        className="group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition hover:text-accent-2"
         onClick={(e) => e.stopPropagation()}
       >
         <ReplyIcon className="h-[18px] w-[18px] transition group-hover:-translate-x-0.5" />
@@ -90,7 +90,7 @@ export default function PostActions({
           e.stopPropagation();
           onRepost();
         }}
-        className={`group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-yes ${
+        className={`group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition hover:text-yes ${
           repost.active ? "text-yes" : ""
         }`}
       >
@@ -104,7 +104,7 @@ export default function PostActions({
           e.stopPropagation();
           onReact();
         }}
-        className={`group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-[#fb7185] ${
+        className={`group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition hover:text-[#fb7185] ${
           reaction.active ? "text-[#fb7185]" : ""
         }`}
       >
@@ -121,7 +121,7 @@ export default function PostActions({
           e.stopPropagation();
           onBookmark();
         }}
-        className={`group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-accent-2 ${
+        className={`group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition hover:text-accent-2 ${
           bookmark.active ? "text-accent-2" : ""
         }`}
       >
@@ -138,7 +138,7 @@ export default function PostActions({
             /* ignore */
           }
         }}
-        className="group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-text-dim"
+        className="group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition hover:text-text-dim"
       >
         <ShareIcon className="h-[18px] w-[18px]" />
       </button>
@@ -150,7 +150,7 @@ export default function PostActions({
           setCleanShotOpen(true);
         }}
         title="Clean Shot"
-        className="group flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition hover:text-accent-2"
+        className="group flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs transition hover:text-accent-2"
       >
         <CleanShotIcon className="h-[18px] w-[18px]" />
       </button>

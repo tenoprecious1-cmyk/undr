@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { setOnboardingTourStatusAction } from "@/app/actions";
 import type { OnboardingTourStatus } from "@/lib/types";
 
@@ -53,7 +53,13 @@ export default function OnboardingTour({
     update();
     if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    window.visualViewport?.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+      window.visualViewport?.removeEventListener("resize", update);
+    };
   }, [phase, stepIndex]);
 
   if (phase === "closed") return null;
@@ -146,7 +152,23 @@ function TourSpotlight({
   onSkip: () => void;
 }) {
   const pad = 8;
-  const cardTop = rect ? Math.min(Math.max(rect.bottom + 16, 16), window.innerHeight - 220) : undefined;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState(220);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const measure = () => setCardHeight(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [step]);
+
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 0;
+  const cardTop = rect
+    ? Math.min(Math.max(rect.bottom + 16, 16), Math.max(16, viewportHeight - cardHeight - 16))
+    : undefined;
 
   return (
     <div className="relative z-10 h-full w-full">
@@ -162,6 +184,7 @@ function TourSpotlight({
         />
       )}
       <div
+        ref={cardRef}
         className="absolute left-1/2 w-[90%] max-w-sm -translate-x-1/2 rounded-2xl border border-border-soft bg-surface p-5 shadow-2xl"
         style={{ top: cardTop ?? "50%", transform: cardTop ? "translateX(-50%)" : "translate(-50%, -50%)" }}
       >

@@ -35,7 +35,7 @@ export default function MobileNav() {
               key={item.href}
               href={item.href}
               data-tour={item.tour}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1 text-[11px] transition-colors ${
+              className={`flex flex-col items-center gap-0.5 px-3 py-2 text-[11px] transition-colors ${
                 active ? "text-text" : "text-text-faint"
               }`}
             >
